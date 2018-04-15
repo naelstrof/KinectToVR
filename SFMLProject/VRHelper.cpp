@@ -60,14 +60,27 @@ void SetUniverseOrigin(vr::HmdMatrix34_t& curPos, sf::Vector3f pos, vrinputemula
 	vec.v[0] = -curPos.m[0][3];
 	vec.v[1] = -curPos.m[1][3];
 	vec.v[2] = -curPos.m[2][3];
+	vr::HmdVector3d_t hvec;
+	hvec.v[0] = -curPos.m[0][3]/2.f;
+	hvec.v[1] = -curPos.m[1][3]/2.f;
+	hvec.v[2] = -curPos.m[2][3]/2.f;
     vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
     vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0, devicePoses, vr::k_unMaxTrackedDeviceCount);
 	for (int i = 0; i < vr::k_unMaxTrackedDeviceCount; i++) {
 		if (!devicePoses[i].bDeviceIsConnected) {
 			continue;
 		}
+		if (vr::VRSystem()->GetTrackedDeviceClass(i) != vr::TrackedDeviceClass_HMD &&
+			vr::VRSystem()->GetTrackedDeviceClass(i) != vr::TrackedDeviceClass_Controller &&
+			vr::VRSystem()->GetTrackedDeviceClass(i) != vr::TrackedDeviceClass_GenericTracker) {
+			continue;
+		}
 		inputEmulator.enableDeviceOffsets(i, true);
-		inputEmulator.setWorldFromDriverTranslationOffset(i, vec);
+		if ( vr::VRSystem()->GetTrackedDeviceClass(i) == vr::TrackedDeviceClass_GenericTracker) {
+			inputEmulator.setWorldFromDriverTranslationOffset(i, hvec);
+		} else {
+			inputEmulator.setWorldFromDriverTranslationOffset(i, vec);
+		}
 	}
 }
 
@@ -85,13 +98,26 @@ void MoveUniverseOrigin(vr::HmdMatrix34_t& curPos, sf::Vector3f delta, vrinputem
 	vec.v[0] = -curPos.m[0][3];
 	vec.v[1] = -curPos.m[1][3];
 	vec.v[2] = -curPos.m[2][3];
+	vr::HmdVector3d_t hvec;
+	hvec.v[0] = -curPos.m[0][3]/2.f;
+	hvec.v[1] = -curPos.m[1][3]/2.f;
+	hvec.v[2] = -curPos.m[2][3]/2.f;
     vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
     vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0, devicePoses, vr::k_unMaxTrackedDeviceCount);
 	for (int i = 0; i < vr::k_unMaxTrackedDeviceCount; i++) {
 		if (!devicePoses[i].bDeviceIsConnected) {
 			continue;
 		}
+		if (vr::VRSystem()->GetTrackedDeviceClass(i) != vr::TrackedDeviceClass_HMD &&
+			vr::VRSystem()->GetTrackedDeviceClass(i) != vr::TrackedDeviceClass_Controller &&
+			vr::VRSystem()->GetTrackedDeviceClass(i) != vr::TrackedDeviceClass_GenericTracker) {
+			continue;
+		}
 		inputEmulator.enableDeviceOffsets(i, true);
-		inputEmulator.setWorldFromDriverTranslationOffset(i, vec);
+		if ( vr::VRSystem()->GetTrackedDeviceClass(i) == vr::TrackedDeviceClass_GenericTracker) {
+			inputEmulator.setWorldFromDriverTranslationOffset(i, hvec);
+		} else {
+			inputEmulator.setWorldFromDriverTranslationOffset(i, vec);
+		}
 	}
 }
