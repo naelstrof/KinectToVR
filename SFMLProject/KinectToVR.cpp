@@ -238,7 +238,6 @@ void processLoop(KinectHandlerBase& kinect) {
 
     KinectSettings::userChangingZero = true;
     PlayspaceMovementAdjuster playspaceMovementAdjuster(&inputEmulator);
-	int currentFrame = 0;
     guiRef.setPlayspaceResetButtonSignal(playspaceMovementAdjuster);
     while (renderWindow.isOpen())
     {
@@ -313,12 +312,12 @@ void processLoop(KinectHandlerBase& kinect) {
             //Draw
             kinect.drawKinectData(renderWindow);
         }
-        std::vector<uint32_t> virtualDeviceIndexes;
-        for (KinectTrackedDevice d : v_trackers) {
-            vrinputemulator::VirtualDeviceInfo info = inputEmulator.getVirtualDeviceInfo(d.deviceId);
-            virtualDeviceIndexes.push_back(info.openvrDeviceId); // needs to be converted into openvr's id - as inputEmulator has it's own Id's starting from zero
-        }
-        playspaceMovementAdjuster.update(leftController, rightController, virtualDeviceIndexes);
+		std::vector<uint32_t> virtualDeviceIndexes;
+		for (KinectTrackedDevice d : v_trackers) {
+			vrinputemulator::VirtualDeviceInfo info = inputEmulator.getVirtualDeviceInfo(d.deviceId);
+			virtualDeviceIndexes.push_back(info.openvrDeviceId); // needs to be converted into openvr's id - as inputEmulator has it's own Id's starting from zero
+		}
+		playspaceMovementAdjuster.update(leftController, rightController, virtualDeviceIndexes);
         
         renderWindow.pushGLStates();
 

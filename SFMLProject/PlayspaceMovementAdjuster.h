@@ -2,20 +2,17 @@
 #include "VRHelper.h"
 #include "VRController.h"
 #include "KinectSettings.h"
+#include <iostream>
 
 class PlayspaceMovementAdjuster {
 public:
     PlayspaceMovementAdjuster( vrinputemulator::VRInputEmulator* vrinputEmulator )
-		: changedPlayspace(false),
-        lastLeftPosition(0,0,0),
+		: lastLeftPosition(0,0,0),
+        universeOrigin(0,0,0),
         lastRightPosition(0,0,0)
     {
 		inputEmulator = vrinputEmulator;
-        // FIXME: frame 0 to 1, delta position will be wrong, if they're holding the movement buttons, they'll get zipped into space.
-        ensureWorkingCopyReverted();
-        vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(&currentChaperoneMatrix);
-        initialPlayspaceMatrix = currentChaperoneMatrix;
-		SetUniverseOrigin(currentChaperoneMatrix, sf::Vector3f(0, 0, 0), *inputEmulator, virtualDeviceIndexes);
+		SetUniverseOrigin(sf::Vector3f(0, 0, 0), *inputEmulator, virtualDeviceIndexes);
     }
     ~PlayspaceMovementAdjuster() {
 
@@ -27,16 +24,14 @@ public:
     }
     
     void resetPlayspaceAdjustments() {
-		SetUniverseOrigin(initialPlayspaceMatrix, sf::Vector3f(0, 0, 0), *inputEmulator, virtualDeviceIndexes);
+		SetUniverseOrigin(sf::Vector3f(0, 0, 0), *inputEmulator, virtualDeviceIndexes);
     }
 
 private:
     sf::Vector3f lastLeftPosition;
     sf::Vector3f lastRightPosition;
-    vr::HmdMatrix34_t initialPlayspaceMatrix;
-    vr::HmdMatrix34_t currentChaperoneMatrix;
+	sf::Vector3f universeOrigin;
 	vrinputemulator::VRInputEmulator* inputEmulator;
-    bool changedPlayspace;
     std::vector<uint32_t> virtualDeviceIndexes;
 
     bool poseIsUsable(vr::TrackedDevicePose_t pose) {
@@ -44,13 +39,14 @@ private:
     }
     void playspaceMovementUpdate(VRcontroller& leftController, VRcontroller& rightController) {
 
-		sf::Vector3f worldOrigin = sf::Vector3f(currentChaperoneMatrix.m[0][3], currentChaperoneMatrix.m[1][3], currentChaperoneMatrix.m[2][3]);
-
         vr::TrackedDevicePose_t leftPose = leftController.GetPose();
         sf::Vector3f positionDelta = sf::Vector3f(0, 0, 0);
 		if (poseIsUsable(leftPose)) {
 			vr::HmdMatrix34_t* leftMat = &(leftPose.mDeviceToAbsoluteTracking);
-			sf::Vector3f leftPos = sf::Vector3f(leftMat->m[0][3], leftMat->m[1][3], leftMat->m[2][3]) + worldOrigin;
+
+			vrinputemulator::DeviceOffsets info;
+			inputEmulator->getDeviceOffsets(leftController.GetID(), info);
+			sf::Vector3f leftPos = sf::Vector3f(leftMat->m[0][3], leftMat->m[1][3], leftMat->m[2][3]) + universeOrigin;
 			if (KinectSettings::leftHandPlayspaceMovementButton && leftController.GetPress((vr::EVRButtonId)(KinectSettings::leftHandPlayspaceMovementButton - 1))) {
 				positionDelta = leftPos - lastLeftPosition;
 			}
@@ -60,21 +56,16 @@ private:
         vr::TrackedDevicePose_t rightPose = rightController.GetPose();
         if (poseIsUsable(rightPose)) {
 			vr::HmdMatrix34_t* rightMat = &(rightPose.mDeviceToAbsoluteTracking);
-			sf::Vector3f rightPos = sf::Vector3f(rightMat->m[0][3], rightMat->m[1][3], rightMat->m[2][3]) + worldOrigin;
+			sf::Vector3f rightPos = sf::Vector3f(rightMat->m[0][3], rightMat->m[1][3], rightMat->m[2][3]) + universeOrigin;
 			if (KinectSettings::rightHandPlayspaceMovementButton && rightController.GetPress((vr::EVRButtonId)(KinectSettings::rightHandPlayspaceMovementButton - 1))) {
 				positionDelta = rightPos - lastRightPosition;
 			}
             lastRightPosition = rightPos;
         }
-        if (positionDelta.x + positionDelta.y + positionDelta.z != 0) {
-            MoveUniverseOrigin(currentChaperoneMatrix, positionDelta, *inputEmulator, virtualDeviceIndexes);
-        }
-    }
-    void ensureWorkingCopyReverted() {
-        vr::VRChaperoneSetup()->RevertWorkingCopy();
-		// TODO: Probably send out an error if we never get a good calibration state. if someone bumped their lighthouses this will freeze the app..
-		while (vr::VRChaperone()->GetCalibrationState() != vr::ChaperoneCalibrationState_OK) {
-            vr::VRChaperoneSetup()->RevertWorkingCopy();
-        };
+
+		if (sqrt(positionDelta.x*positionDelta.x + positionDelta.y*positionDelta.y + positionDelta.z*positionDelta.z) != 0) {
+			universeOrigin += positionDelta;
+			SetUniverseOrigin(universeOrigin, *inputEmulator, virtualDeviceIndexes);
+		}
     }
 };

@@ -49,7 +49,7 @@ vr::HmdVector3_t GetVRPositionFromMatrix(vr::HmdMatrix34_t matrix) {
 
 	return vector;
 }
-void translateAllDevicesWorldFromDriver(vrinputemulator::VRInputEmulator& inputEmulator, vr::HmdVector3d_t vec) {
+/*void translateAllDevicesWorldFromDriver(vrinputemulator::VRInputEmulator& inputEmulator, vr::HmdVector3d_t vec) {
 	vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
 	vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0, devicePoses, vr::k_unMaxTrackedDeviceCount);
 	for (uint32_t i = 0; i < vr::k_unMaxTrackedDeviceCount; i++) {
@@ -58,7 +58,7 @@ void translateAllDevicesWorldFromDriver(vrinputemulator::VRInputEmulator& inputE
 		}
         inputEmulator.setDriverTranslationOffset(i, vec);
     }
-}
+}*/
 
 bool deviceIsVirtual(uint32_t deviceIndex, std::vector<uint32_t> virtualDeviceIndexes) {
     if (virtualDeviceIndexes.empty()) return false;
@@ -72,6 +72,9 @@ void translateRealDevicesWorldFromDriver(vrinputemulator::VRInputEmulator& input
         if (!devicePoses[deviceIndex].bDeviceIsConnected) {
             continue;
         }
+		if (vr::VRSystem()->GetTrackedDeviceClass(deviceIndex) == vr::TrackedDeviceClass_HMD) {
+			continue;
+		}
         if (deviceIsVirtual(deviceIndex, virtualDeviceIndexes)) {
             //The virtual stuff is differently scaled than the physical stuff - may need to look into this, as the value might change with changes to the Kinect tracking
             vr::HmdVector3d_t adjustedVec;
@@ -86,26 +89,15 @@ void translateRealDevicesWorldFromDriver(vrinputemulator::VRInputEmulator& input
     }
 }
  
-void SetUniverseOrigin(const vr::HmdMatrix34_t& curPos, sf::Vector3f pos, vrinputemulator::VRInputEmulator& inputEmulator, std::vector<uint32_t> virtualDeviceIndexes) {
-    if (pos == sf::Vector3f(0, 0, 0)) {
-        translateRealDevicesWorldFromDriver(inputEmulator, { 0,0,0 }, virtualDeviceIndexes);
-    }
-    else {
-        sf::Vector3f universePos = sf::Vector3f(
-            curPos.m[0][0] * pos.x + curPos.m[0][1] * pos.y + curPos.m[0][2] * pos.z,
-            curPos.m[1][0] * pos.x + curPos.m[1][1] * pos.y + curPos.m[1][2] * pos.z,
-            curPos.m[2][0] * pos.x + curPos.m[2][1] * pos.y + curPos.m[2][2] * pos.z
-        );
-        vr::HmdVector3d_t vec;
-        vec.v[0] = -curPos.m[0][3];
-        vec.v[1] = -curPos.m[1][3];
-        vec.v[2] = -curPos.m[2][3];
-
-        translateRealDevicesWorldFromDriver(inputEmulator, vec, virtualDeviceIndexes);
-    }
+void SetUniverseOrigin(sf::Vector3f pos, vrinputemulator::VRInputEmulator& inputEmulator, std::vector<uint32_t> virtualDeviceIndexes) {
+	vr::HmdVector3d_t vec;
+	vec.v[0] = -pos.x;
+	vec.v[1] = -pos.y;
+	vec.v[2] = -pos.z;
+	translateRealDevicesWorldFromDriver(inputEmulator, vec, virtualDeviceIndexes);
 }
 
-void MoveUniverseOrigin(vr::HmdMatrix34_t& curPos, sf::Vector3f delta, vrinputemulator::VRInputEmulator& inputEmulator, std::vector<uint32_t> virtualDeviceIndexes) {
+/*void MoveUniverseOrigin(vr::HmdMatrix34_t& curPos, sf::Vector3f delta, vrinputemulator::VRInputEmulator& inputEmulator, std::vector<uint32_t> virtualDeviceIndexes) {
     // Adjust direction of delta to match the universe forward direction.
     sf::Vector3f universeDelta = sf::Vector3f(
         curPos.m[0][0] * delta.x + curPos.m[0][1] * delta.y + curPos.m[0][2] * delta.z,
@@ -121,4 +113,4 @@ void MoveUniverseOrigin(vr::HmdMatrix34_t& curPos, sf::Vector3f delta, vrinputem
     vec.v[2] = -curPos.m[2][3];
 
     translateRealDevicesWorldFromDriver(inputEmulator, vec, virtualDeviceIndexes);
-}
+}*/
