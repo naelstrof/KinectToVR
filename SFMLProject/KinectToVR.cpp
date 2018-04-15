@@ -238,6 +238,7 @@ void processLoop(KinectHandlerBase& kinect) {
 
     KinectSettings::userChangingZero = true;
     PlayspaceMovementAdjuster playspaceMovementAdjuster(&inputEmulator);
+	int currentFrame = 0;
     guiRef.setPlayspaceResetButtonSignal(playspaceMovementAdjuster);
     while (renderWindow.isOpen())
     {
@@ -274,6 +275,18 @@ void processLoop(KinectHandlerBase& kinect) {
         
         //VR Controllers
         if (eError == vr::VRInitError_None) {
+			vr::TrackedDevicePose_t devicePoses[vr::k_unMaxTrackedDeviceCount];
+			vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseStanding, 0, devicePoses, vr::k_unMaxTrackedDeviceCount);
+			for (uint32_t deviceIndex = 0; deviceIndex < vr::k_unMaxTrackedDeviceCount; deviceIndex++) {
+				if (!devicePoses[deviceIndex].bDeviceIsConnected) {
+					continue;
+				}
+				vrinputemulator::DeviceInfo info;
+				inputEmulator.getDeviceInfo(deviceIndex, info);
+				if (!info.offsetsEnabled) {
+					inputEmulator.enableDeviceOffsets(deviceIndex, true);
+				}
+			}
             rightController.update(deltaT);
             leftController.update(deltaT);
             updateHMDPosAndRot(m_VRSystem);
@@ -287,7 +300,7 @@ void processLoop(KinectHandlerBase& kinect) {
             std::cerr << "Error updating controllers: Could not connect to the SteamVR system! OpenVR init error-code " << std::to_string(eError) << std::endl;
         }
 
-        playspaceMovementAdjuster.update(leftController, rightController);
+        
         // Update Kinect Status
         guiRef.updateKinectStatusLabel(kinect);
         if (kinect.isInitialised()) {
@@ -300,7 +313,12 @@ void processLoop(KinectHandlerBase& kinect) {
             //Draw
             kinect.drawKinectData(renderWindow);
         }
-
+        std::vector<uint32_t> virtualDeviceIndexes;
+        for (KinectTrackedDevice d : v_trackers) {
+            vrinputemulator::VirtualDeviceInfo info = inputEmulator.getVirtualDeviceInfo(d.deviceId);
+            virtualDeviceIndexes.push_back(info.openvrDeviceId); // needs to be converted into openvr's id - as inputEmulator has it's own Id's starting from zero
+        }
+        playspaceMovementAdjuster.update(leftController, rightController, virtualDeviceIndexes);
         
         renderWindow.pushGLStates();
 

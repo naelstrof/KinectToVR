@@ -39,12 +39,12 @@ public:
 
     void update(float delta) {
         deltaTime = delta;
-        if (m_HMDSystem != nullptr) {
+        /*if (m_HMDSystem != nullptr) {
             lastStateValid = m_HMDSystem->GetControllerStateWithPose(vr::ETrackingUniverseOrigin::TrackingUniverseStanding, controllerID, &state_, sizeof(state_), &controllerPose);
             if (lastStateValid) {
                 prevState_ = state_;
             }
-        }
+        }*/
         if (m_HMDSystem != nullptr)
         {
             if (controllerID == vr::k_unTrackedDeviceIndexInvalid) {
@@ -53,8 +53,15 @@ public:
             else {
                 lastStateValid = m_HMDSystem->GetControllerState(controllerID, &state_, sizeof(state_));
                 vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+				// for somebody asking for the default figure out the time from now to photons.
+				float fSecondsSinceLastVsync;
+				m_HMDSystem->GetTimeSinceLastVsync(&fSecondsSinceLastVsync, NULL);
+				float fDisplayFrequency = m_HMDSystem->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_DisplayFrequency_Float);
+				float fFrameDuration = 1.f / fDisplayFrequency;
+				float fVsyncToPhotons = m_HMDSystem->GetFloatTrackedDeviceProperty(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SecondsFromVsyncToPhotons_Float);
+				float fPredictedSecondsFromNow = fFrameDuration - fSecondsSinceLastVsync + fVsyncToPhotons;
                 m_HMDSystem->GetDeviceToAbsoluteTrackingPose(
-                    vr::ETrackingUniverseOrigin::TrackingUniverseStanding, 0, poses, vr::k_unMaxTrackedDeviceCount);
+                    vr::ETrackingUniverseOrigin::TrackingUniverseStanding, fPredictedSecondsFromNow, poses, vr::k_unMaxTrackedDeviceCount);
                 controllerPose = poses[controllerID];
                 if (lastStateValid) {
                     prevState_ = state_;
